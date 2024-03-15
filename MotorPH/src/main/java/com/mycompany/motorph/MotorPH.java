@@ -13,6 +13,7 @@ import java.text.DateFormatSymbols;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.Year;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.AbstractMap;
@@ -20,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -39,14 +41,16 @@ public class MotorPH {
     public static String employee = "";
     public static int employeeNumber = 0;
     public static double hourlyRate = 0;
-    public static int monthNumber = 1;
+    public static int year = 0;
+    public static boolean isYearInRecord = false;
+    public static int monthNumber = 0;
+    public static int monthTotalWeeks = 0;
     public static String month = "";
     public static double totalHoursWorked = 0;
     public static double basicSalary = 0;
     public static List<AbstractMap.SimpleEntry<Integer, List<String>>> weeklyAttendances;
     
     public static void main(String[] args) {
-        
         while (true) {
             resetData();
             System.out.println("**************************************************");
@@ -66,17 +70,29 @@ public class MotorPH {
                 System.out.println("*************** Salary Computation ***************");
                 System.out.println("");
 
-                getMonthNumber();
+                getYear();
+                if (year > (Year.now().getValue() - 5) && year <= Year.now().getValue()) {
+                    getMonthNumber();
+                    if (monthNumber >= 1 && monthNumber <= 12) {
 
-                if (monthNumber >= 1 && monthNumber <= 12) {
-
-                    month = new DateFormatSymbols().getMonths()[monthNumber - 1];
-                    System.out.println("Entered Month: " + month);
-                    getWeeklyAttendance();
-                    calculateHoursWorked();
+                        month = new DateFormatSymbols().getMonths()[monthNumber - 1];
+                        System.out.println("Entered Month: " + month);
+                        System.out.println("Total Number of Weeks: " + monthTotalWeeks);
+                        
+                        getWeeklyAttendance();
+                        if (!weeklyAttendances.isEmpty()) {
+                            calculateSalary();
+                        }
+                        else {
+                            System.out.println("No attendance record for " + month + " " + year);
+                        }
+                    }
+                    else {
+                        System.out.println("Invalid Month Number. Please Try Again.");
+                    }
                 }
                 else {
-                    System.out.println("Invalid Month Number. Please Try Again.");
+                    System.out.println("Invalid Year. Please Try Again.");
                 }
             }
             else {
@@ -97,10 +113,14 @@ public class MotorPH {
         employee = "";
         employeeNumber = 0;
         hourlyRate = 0;
-        monthNumber = 1;
+        year = 0;
+        isYearInRecord = false;
+        monthNumber = 0;
+        monthTotalWeeks = 0;
         month = "";
         totalHoursWorked = 0;
         basicSalary = 0;
+        weeklyAttendances = null;
     }
     
     // Method used for reading CSV files
@@ -151,39 +171,78 @@ public class MotorPH {
         System.out.println("Hourly Rate: " + hourlyRate);
     }
     
+    // Method used for getting Year
+    public static void getYear () {
+        System.out.print("Enter Attendance Year: ");
+        BufferedReader inputReader = new BufferedReader(new InputStreamReader(System.in));
+
+        try {
+           year = Integer.parseInt(inputReader.readLine());
+        } catch (IOException e) {
+                e.printStackTrace();
+        }
+    }
+    
     // Method used for getting Month Number
     public static void getMonthNumber () {
         System.out.print("Enter Month Number For Salary Computation (1-12): ");
         BufferedReader inputReader = new BufferedReader(new InputStreamReader(System.in));
 
         try {
+            
            monthNumber = Integer.parseInt(inputReader.readLine());
+           Calendar calendar = Calendar.getInstance();
+           calendar.set(Calendar.YEAR, year);
+           calendar.set(Calendar.MONTH, monthNumber - 1);
+           calendar.set(Calendar.DAY_OF_MONTH, 1);
+           monthTotalWeeks = calendar.getActualMaximum(Calendar.WEEK_OF_MONTH);
+           
         } catch (IOException e) {
                 e.printStackTrace();
         }
     }
     
-    // Method used for calculating hours per week depending on the month number provided
-    private static void calculateHoursWorked () {
+    // Method used for calculating employee salary
+    public static void calculateSalary () {
+        System.out.println("------------------------------");
         
-        for (int i = 0; i < weeklyAttendances.size(); i++) {
-            // System.out.println("Week: " + weeklyAttendances.get(i).getKey());
-            // System.out.println("Record: " + weeklyAttendances.get(i).getValue());
+        for (int a = 1; a <= monthTotalWeeks; a++) {
             double weeklyHoursWorked = 0;
+            boolean isRecordAdded = false;
             
-            for (int a = 0; a < weeklyAttendances.get(i).getValue().size(); a++) {
-                String date = weeklyAttendances.get(i).getValue().get(a).split(",")[1];
-                String timeIn = weeklyAttendances.get(i).getValue().get(a).split(",")[2];
-                String timeOut = weeklyAttendances.get(i).getValue().get(a).split(",")[3];
-                double hoursWorkedPerDay = getHoursWorkedPerDay(date, timeIn, timeOut);
-                
-               //  System.out.println("Hours Worked For Date: " + date + " - " + hoursWorkedPerDay);
-                weeklyHoursWorked += hoursWorkedPerDay;
+            for (int i = 0; i < weeklyAttendances.size(); i++) {
+                // check if record already exists in the list
+                if (weeklyAttendances.get(i).getKey().equals(a)) {
+                    isRecordAdded = true;
+                    weeklyHoursWorked = calculateHoursWorked(weeklyAttendances.get(i), weeklyHoursWorked);
+                    System.out.println("Week # " + weeklyAttendances.get(i).getKey() + " Total Hours: " + String.format("%.2f", weeklyHoursWorked));
+
+                    calculateGrossWage (weeklyHoursWorked, weeklyAttendances.get(i).getKey());
+                    calculateNetWage (weeklyHoursWorked, weeklyAttendances.get(i).getKey());
+
+                    System.out.println("------------------------------");
+                }
             }
-            System.out.println("Total Hours Worked For Week: " + weeklyAttendances.get(i).getKey() + " - " + weeklyHoursWorked);
-            calculateGrossWage (weeklyHoursWorked, weeklyAttendances.get(i).getKey());
-            calculateNetWage (weeklyHoursWorked, weeklyAttendances.get(i).getKey());
+            
+            if (isRecordAdded == false) {
+                System.out.println("Week # " + a + " Total Hours: 0.0");
+                System.out.println("Week # " + a + " Gross Wage: 0.0");
+                System.out.println("Week # " + a + " Net Wage: 0.0");
+                System.out.println("------------------------------");
+            }
         }
+    }
+    
+    // Method used for calculating hours per week depending on the month number provided
+    private static double calculateHoursWorked (AbstractMap.SimpleEntry<Integer, List<String>> weeklyAttendance, double weeklyHoursWorked) {
+        for (int a = 0; a < weeklyAttendance.getValue().size(); a++) {
+            String date = weeklyAttendance.getValue().get(a).split(",")[1];
+            String timeIn = weeklyAttendance.getValue().get(a).split(",")[2];
+            String timeOut = weeklyAttendance.getValue().get(a).split(",")[3];
+            double hoursWorkedPerDay = getHoursWorkedPerDay(date, timeIn, timeOut);
+            weeklyHoursWorked += hoursWorkedPerDay;
+        }
+        return weeklyHoursWorked;
     }
     
     // Method used for calculating the Weekly Gross Wage
@@ -214,12 +273,13 @@ public class MotorPH {
             Logger.getLogger(MotorPH.class.getName()).log(Level.SEVERE, null, ex);
         }
         
-        // Get all attendances with same month
+        // Get all attendances with same month and year
         for (int i = 0; i < attendances.size(); i++) {
             String date = attendances.get(i).split(",")[1];
             int dateMonth = Integer.parseInt(date.split("/")[0]);
-            
-            if(dateMonth == monthNumber) {
+            int dateYear = Integer.parseInt(date.split("/")[2]);
+                    
+            if(dateMonth == monthNumber && dateYear == year) {
                 monthlyAttendances.add(attendances.get(i));
             }
         }
@@ -227,13 +287,14 @@ public class MotorPH {
         // Get all attendances per week
         for (int i = 0; i < monthlyAttendances.size(); i++) {
             String date = monthlyAttendances.get(i).split(",")[1];
-            String timeIn = monthlyAttendances.get(i).split(",")[2];
             
-            LocalDateTime ldt = getDateTime(date, timeIn);
-
-            Calendar cal = Calendar.getInstance();
-            cal.setTime(Date.from(ldt.toInstant(ZoneOffset.UTC)));
-            int week = cal.get(cal.WEEK_OF_MONTH);
+            Calendar calendar = Calendar.getInstance();
+            calendar.set(Calendar.YEAR, Integer.parseInt(date.split("/")[2]));
+            calendar.set(Calendar.MONTH,Integer.parseInt(date.split("/")[0]) - 1);
+            calendar.set(Calendar.DATE, Integer.parseInt(date.split("/")[1]));
+            int week = calendar.get(calendar.WEEK_OF_MONTH);
+            System.out.println("Date: " + date);
+            System.out.println("Week: " + week);
             
             if (weeklyAttendances.isEmpty()) {
                 List<String> weeklyAttendance = new ArrayList<String>();
