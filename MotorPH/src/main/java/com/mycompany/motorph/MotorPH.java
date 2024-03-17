@@ -140,10 +140,13 @@ public class MotorPH {
             employeeNumber = Integer.parseInt(inputReader.readLine());
             String employeeDetailsRow = "";
             
+            // read each row of the CSV file
             while ((employeeDetailsRow = employeeDetailsReader.readLine()) != null) {
+                // replace commas inside string
                 String employeeDetails = employeeDetailsRow.replaceAll(",(?!(([^\"]*\"){2})*[^\"]*$)", ";x;");
                 String[] splitEmployeeDetails = employeeDetails.split(",");
 
+                // check if employee number matches row data
                 if (Integer.parseInt(splitEmployeeDetails[0]) == employeeNumber) {
                     employee = employeeDetails;
                 }
@@ -157,6 +160,7 @@ public class MotorPH {
     public static void viewEmployeeProfile () {
         String[] splitEmployeeDetails = employee.split(",");
 
+        // display employee details
         System.out.println("Employee Number: " + splitEmployeeDetails[0]);
         System.out.println("Employee Name: " + splitEmployeeDetails[2] + " " + splitEmployeeDetails[1]);
         System.out.println("Employee Birthday: " + splitEmployeeDetails[3]);
@@ -164,11 +168,12 @@ public class MotorPH {
         // Save hourly rate and basic salary for Salary Calculations
         basicSalary = Double.parseDouble(cleanString(splitEmployeeDetails[splitEmployeeDetails.length - 6]));
         hourlyRate = Double.parseDouble(splitEmployeeDetails[splitEmployeeDetails.length - 1]);
+        // display salary and hourly rate
         System.out.println("Basic Salary: " + basicSalary);
         System.out.println("Hourly Rate: " + hourlyRate);
     }
     
-    // Method used for getting Year
+    // Method used for getting Year from user input
     public static void getYear () {
         System.out.print("Enter Attendance Year: ");
         BufferedReader inputReader = new BufferedReader(new InputStreamReader(System.in));
@@ -180,18 +185,18 @@ public class MotorPH {
         }
     }
     
-    // Method used for getting Month Number
+    // Method used for getting Month Number from user input
     public static void getMonthNumber () {
         System.out.print("Enter Month Number For Salary Computation (1-12): ");
         BufferedReader inputReader = new BufferedReader(new InputStreamReader(System.in));
 
         try {
-            
            monthNumber = Integer.parseInt(inputReader.readLine());
            Calendar calendar = Calendar.getInstance();
            calendar.set(Calendar.YEAR, year);
            calendar.set(Calendar.MONTH, monthNumber - 1);
            calendar.set(Calendar.DAY_OF_MONTH, 1);
+           // get total number of weeks of the selected month
            monthTotalWeeks = calendar.getActualMaximum(Calendar.WEEK_OF_MONTH);
            
         } catch (IOException e) {
@@ -202,14 +207,17 @@ public class MotorPH {
     // Method used for calculating employee salary
     public static void calculateSalary () {
         System.out.println("------------------------------");
-        System.out.println("Record: " + weeklyAttendances);
         
+        // loop through total number of weeks to display Salary Computation
         for (int a = 1; a <= monthTotalWeeks; a++) {
+            // initialize variables to be used for computation
             double weeklyHoursWorked = 0;
             boolean isRecordAdded = false;
             
+            // loop through list of record of weekly attendance by specific employee
             for (int i = 0; i < weeklyAttendances.size(); i++) {
-                // check if record already exists in the list
+                // check if week number is equal to current loop number
+                // if true, display the calculated salary for that week number
                 if (weeklyAttendances.get(i).getKey().equals(a)) {
                     isRecordAdded = true;
                     weeklyHoursWorked = calculateHoursWorked(weeklyAttendances.get(i), weeklyHoursWorked);
@@ -222,6 +230,7 @@ public class MotorPH {
                 }
             }
             
+            // if no record added for the specific week, display calculations with 0 hours worked
             if (isRecordAdded == false) {
                 System.out.println("Week # " + a + " Total Hours: 0.0");
                 calculateGrossWage (0.0, a);
@@ -233,6 +242,7 @@ public class MotorPH {
     
     // Method used for calculating hours per week depending on the month number provided
     public static double calculateHoursWorked (AbstractMap.SimpleEntry<Integer, List<String>> weeklyAttendance, double weeklyHoursWorked) {
+        // loop through employee weekly attendance record
         for (int a = 0; a < weeklyAttendance.getValue().size(); a++) {
             String date = weeklyAttendance.getValue().get(a).split(",")[1];
             String timeIn = weeklyAttendance.getValue().get(a).split(",")[2];
@@ -245,39 +255,48 @@ public class MotorPH {
     
     // Method used for calculating the Weekly Gross Wage
     public static void calculateGrossWage (double weeklyHoursWorked, int week) {
-        System.out.println("Week # " + week + " Gross Wage: " + String.format("%.2f", (weeklyHoursWorked * hourlyRate)));
+        double grossWage = weeklyHoursWorked * hourlyRate;
+        
+        System.out.println("Week # " + week + " Gross Wage: " + String.format("%.2f", grossWage));
     }
     
     // Method used for calculating the Weekly Net Wage
     public static void calculateNetWage (double weeklyHoursWorked, int week) {
         
         double grossWage = Double.parseDouble(String.format("%.2f", (weeklyHoursWorked * hourlyRate)));
-        double sssContribution = Double.parseDouble(String.format("%.2f", (getSSSContribution() / monthTotalWeeks)));
-        double philHealthContribution = Double.parseDouble(String.format("%.2f", (getPhilHealthContribution() / monthTotalWeeks)));
-        double pagibigContribution = Double.parseDouble(String.format("%.2f", (getPagibigContribution() / monthTotalWeeks)));
-        double witholdingTax = Double.parseDouble(String.format("%.2f", (getWitholdingTax() / monthTotalWeeks)));
         
-        double netWage = grossWage - sssContribution - philHealthContribution - pagibigContribution - witholdingTax;
+        double sssContribution = Double.parseDouble(String.format("%.2f", getSSSContribution()));
+        double philHealthContribution = Double.parseDouble(String.format("%.2f", getPhilHealthContribution()));
+        double pagibigContribution = Double.parseDouble(String.format("%.2f", getPagibigContribution()));
+        
+        
+        double witholdingTax = Double.parseDouble(String.format("%.2f", (getWitholdingTax(getSSSContribution(), getPhilHealthContribution(), getPagibigContribution()))));
+        
+        double netWage = grossWage - (sssContribution / monthTotalWeeks) - (philHealthContribution / monthTotalWeeks) - (pagibigContribution / monthTotalWeeks) - (witholdingTax / monthTotalWeeks);
                 
-        System.out.println("Weekly SSS Contrib: " + sssContribution);
-        System.out.println("Weekly PhilHealth Contrib: " + philHealthContribution);
-        System.out.println("Weekly pagibig Contrib: " + pagibigContribution);
-        System.out.println("Weekly Witholding Tax: " + witholdingTax);
+        // System.out.println("Weekly SSS Contrib: " + sssContribution);
+        // System.out.println("Weekly PhilHealth Contrib: " + philHealthContribution);
+        // System.out.println("Weekly pagibig Contrib: " + pagibigContribution);
+        // System.out.println("Weekly Witholding Tax: " + witholdingTax);
         System.out.println("Week # " + week + " Net Wage: " + String.format("%.2f", (netWage)));
     }
     
     
     // Method used for getting weekly attendance depending on the selected month
     public static void getWeeklyAttendance () {  
+        // Initialize variables need for this method
         weeklyAttendances = new ArrayList<AbstractMap.SimpleEntry<Integer, List<String>>>();
         String attendanceRow = "";
         List<String> attendances = new ArrayList<String>();
         List<String> monthlyAttendances = new ArrayList<String>();
         
         try {
+            // loop through attendance csv
             while ((attendanceRow = attendanceReader.readLine()) != null) {
                 String[] splitAttendance = attendanceRow.split(",");
                 
+                // check if data row is equal to the entered employee number
+                // if true, add row to attendances variable
                 if (Integer.parseInt(splitAttendance[0]) == employeeNumber) {
                     attendances.add(attendanceRow);
                 }
@@ -300,7 +319,7 @@ public class MotorPH {
         // Get all attendances per week
         for (int i = 0; i < monthlyAttendances.size(); i++) {
             String date = monthlyAttendances.get(i).split(",")[1];
-            
+            // get week number of the date variable to use as key for the weeklyAttendances list
             Calendar calendar = Calendar.getInstance();
             calendar.set(Calendar.YEAR, Integer.parseInt(date.split("/")[2]));
             calendar.set(Calendar.MONTH,Integer.parseInt(date.split("/")[0]) - 1);
@@ -309,6 +328,9 @@ public class MotorPH {
             // System.out.println("Date: " + date);
             // System.out.println("Week: " + week);
             
+            // check if weeklyAttendances list is empty
+            // if true, add the first monthly attendance record into the weeklyAttendances list and use the week # as key
+            // otherwise, check if the record already exist in the weeklyAttendances List
             if (weeklyAttendances.isEmpty()) {
                 List<String> weeklyAttendance = new ArrayList<String>();
                 weeklyAttendance.add(monthlyAttendances.get(i));
@@ -316,18 +338,25 @@ public class MotorPH {
                 weeklyAttendances.add(new AbstractMap.SimpleEntry<Integer, List<String>>(week, weeklyAttendance));
             }
             else {
-                // check if record already exists in the list
+                // initialize marker if attendence record is already added in the list
                 boolean isRecordAdded = false;
                 
+                // loop through the weeklyAttendances list and check if record already exists in the list
                 for (int a = 0; a < weeklyAttendances.size(); a++) {
+                    // check if week number from the current attendance date is equal to the week number (key) of the current data in the weeklyAttendances list
+                    // if true, check if the date in the current attendance record already exists in the current data of the weeklyAttendances list
                     if (weeklyAttendances.get(a).getKey() == week) {
                         for (int b = 0; b < weeklyAttendances.get(a).getValue().size(); b++) {
                             String attendanceDate = weeklyAttendances.get(a).getValue().get(b).split(",")[1];
+                            
+                            // set isRecordAdded if date already exists in the weeklyAttendances list 
                             if (attendanceDate.equals(date)) {
                                 isRecordAdded = true;
                             }
                         }
                         
+                        // check if isRecordAdded is false
+                        // if false, add the current attendance record in the weekly attendances list with the same week # (key)
                         if (isRecordAdded == false) {
                             weeklyAttendances.get(a).getValue().add(monthlyAttendances.get(i));
                             isRecordAdded = true;
@@ -335,6 +364,8 @@ public class MotorPH {
                     }
                 }
                 
+                // check if isRecordAdded is false
+                // if false, add the current attendance record in the weekly attendances list and use the week # as key
                 if (isRecordAdded == false) {
                     List<String> weeklyAttendance = new ArrayList<String>();
                     weeklyAttendance.add(monthlyAttendances.get(i));
@@ -343,7 +374,6 @@ public class MotorPH {
                 }
             }
         }
-        // System.out.println("Record: " + weeklyAttendances);
     }
     
     // Method used for getting hours worked per day
@@ -403,6 +433,7 @@ public class MotorPH {
     }
 
     // Method used for getting SSS Contribution
+    // hard coded values are based on the Google Sheet Provided
     public static double getSSSContribution() {
         if (basicSalary < 3250) {
             return 135.00;
@@ -542,6 +573,7 @@ public class MotorPH {
     }
 
     // Method used for getting PhilHealth Contribution
+    // hard coded values are based on the Google Sheet Provided
     public static double getPhilHealthContribution() {
         if (basicSalary <= 10000.00) {
             return 150.00;
@@ -555,6 +587,7 @@ public class MotorPH {
     }
 
     // Method used for getting Pagibig Contribution
+    // hard coded values are based on the Google Sheet Provided
     public static double getPagibigContribution() {
         if (basicSalary >= 1000 && basicSalary <= 1500) {
             return basicSalary * 0.01;
@@ -573,24 +606,27 @@ public class MotorPH {
     }
 
     // Method used for getting Witholding Tax
-    public static double getWitholdingTax() {
-        if (basicSalary <= 20832){
+    // hard coded values are based on the Google Sheet Provided
+    public static double getWitholdingTax(double sss, double philHealth, double pagibig) {
+        double deductedSalary = basicSalary - sss - philHealth - pagibig;
+        
+        if (deductedSalary <= 20832){
             return 0.0;
         }
-        else if (basicSalary >= 20833 && basicSalary < 33333) {
-            return (basicSalary - 20833) * 0.2;
+        else if (deductedSalary >= 20833 && deductedSalary < 33333) {
+            return (deductedSalary - 20833) * 0.2;
         }
-        else if (basicSalary >= 33333 && basicSalary < 66667) {
-            return ((basicSalary - 33333) * 0.25) + 2500;
+        else if (deductedSalary >= 33333 && deductedSalary < 66667) {
+            return ((deductedSalary - 33333) * 0.25) + 2500;
         }
-        else if (basicSalary >= 66667 && basicSalary < 166667) {
-            return ((basicSalary - 66667) * 0.3) + 10833;
+        else if (deductedSalary >= 66667 && deductedSalary < 166667) {
+            return ((deductedSalary - 66667) * 0.3) + 10833;
         }
-        else if (basicSalary >= 166667 && basicSalary < 666667) {
-            return ((basicSalary - 166667) * 0.32) + 40833.33;
+        else if (deductedSalary >= 166667 && deductedSalary < 666667) {
+            return ((deductedSalary - 166667) * 0.32) + 40833.33;
         }
         else {
-            return ((basicSalary - 666667) * 0.35) + 200833.33;
+            return ((deductedSalary - 666667) * 0.35) + 200833.33;
         }
     }
 }
