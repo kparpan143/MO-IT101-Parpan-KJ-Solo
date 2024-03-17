@@ -14,14 +14,11 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.Year;
-import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Date;
 import java.util.List;
-import java.util.Locale;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -205,6 +202,7 @@ public class MotorPH {
     // Method used for calculating employee salary
     public static void calculateSalary () {
         System.out.println("------------------------------");
+        System.out.println("Record: " + weeklyAttendances);
         
         for (int a = 1; a <= monthTotalWeeks; a++) {
             double weeklyHoursWorked = 0;
@@ -226,15 +224,15 @@ public class MotorPH {
             
             if (isRecordAdded == false) {
                 System.out.println("Week # " + a + " Total Hours: 0.0");
-                System.out.println("Week # " + a + " Gross Wage: 0.0");
-                System.out.println("Week # " + a + " Net Wage: 0.0");
+                calculateGrossWage (0.0, a);
+                calculateNetWage (0.0, a);
                 System.out.println("------------------------------");
             }
         }
     }
     
     // Method used for calculating hours per week depending on the month number provided
-    private static double calculateHoursWorked (AbstractMap.SimpleEntry<Integer, List<String>> weeklyAttendance, double weeklyHoursWorked) {
+    public static double calculateHoursWorked (AbstractMap.SimpleEntry<Integer, List<String>> weeklyAttendance, double weeklyHoursWorked) {
         for (int a = 0; a < weeklyAttendance.getValue().size(); a++) {
             String date = weeklyAttendance.getValue().get(a).split(",")[1];
             String timeIn = weeklyAttendance.getValue().get(a).split(",")[2];
@@ -252,8 +250,23 @@ public class MotorPH {
     
     // Method used for calculating the Weekly Net Wage
     public static void calculateNetWage (double weeklyHoursWorked, int week) {
-        System.out.println("Week # " + week + " Net Wage: " + String.format("%.2f", (weeklyHoursWorked * hourlyRate)));
+        
+        double grossWage = Double.parseDouble(String.format("%.2f", (weeklyHoursWorked * hourlyRate)));
+        double sssContribution = Double.parseDouble(String.format("%.2f", (getSSSContribution() / monthTotalWeeks)));
+        double philHealthContribution = Double.parseDouble(String.format("%.2f", (getPhilHealthContribution() / monthTotalWeeks)));
+        double pagibigContribution = Double.parseDouble(String.format("%.2f", (getPagibigContribution() / monthTotalWeeks)));
+        double witholdingTax = Double.parseDouble(String.format("%.2f", (getWitholdingTax() / monthTotalWeeks)));
+        
+        double netWage = grossWage - sssContribution - philHealthContribution - pagibigContribution - witholdingTax;
+                
+        System.out.println("Weekly SSS Contrib: " + sssContribution);
+        System.out.println("Weekly PhilHealth Contrib: " + philHealthContribution);
+        System.out.println("Weekly pagibig Contrib: " + pagibigContribution);
+        System.out.println("Weekly Witholding Tax: " + witholdingTax);
+        System.out.println("Week # " + week + " Net Wage: " + String.format("%.2f", (netWage)));
     }
+    
+    
     // Method used for getting weekly attendance depending on the selected month
     public static void getWeeklyAttendance () {  
         weeklyAttendances = new ArrayList<AbstractMap.SimpleEntry<Integer, List<String>>>();
@@ -293,8 +306,8 @@ public class MotorPH {
             calendar.set(Calendar.MONTH,Integer.parseInt(date.split("/")[0]) - 1);
             calendar.set(Calendar.DATE, Integer.parseInt(date.split("/")[1]));
             int week = calendar.get(calendar.WEEK_OF_MONTH);
-            System.out.println("Date: " + date);
-            System.out.println("Week: " + week);
+            // System.out.println("Date: " + date);
+            // System.out.println("Week: " + week);
             
             if (weeklyAttendances.isEmpty()) {
                 List<String> weeklyAttendance = new ArrayList<String>();
@@ -303,10 +316,11 @@ public class MotorPH {
                 weeklyAttendances.add(new AbstractMap.SimpleEntry<Integer, List<String>>(week, weeklyAttendance));
             }
             else {
+                // check if record already exists in the list
+                boolean isRecordAdded = false;
+                
                 for (int a = 0; a < weeklyAttendances.size(); a++) {
                     if (weeklyAttendances.get(a).getKey() == week) {
-                        // check if record already exists in the list
-                        boolean isRecordAdded = false;
                         for (int b = 0; b < weeklyAttendances.get(a).getValue().size(); b++) {
                             String attendanceDate = weeklyAttendances.get(a).getValue().get(b).split(",")[1];
                             if (attendanceDate.equals(date)) {
@@ -316,16 +330,16 @@ public class MotorPH {
                         
                         if (isRecordAdded == false) {
                             weeklyAttendances.get(a).getValue().add(monthlyAttendances.get(i));
+                            isRecordAdded = true;
                         }
                     }
-                    else {
-                        if (a == (weeklyAttendances.size() - 1)) {
-                            List<String> weeklyAttendance = new ArrayList<String>();
-                            weeklyAttendance.add(monthlyAttendances.get(i));
+                }
+                
+                if (isRecordAdded == false) {
+                    List<String> weeklyAttendance = new ArrayList<String>();
+                    weeklyAttendance.add(monthlyAttendances.get(i));
 
-                            weeklyAttendances.add(new AbstractMap.SimpleEntry<Integer, List<String>>(week, weeklyAttendance));
-                        }
-                    }
+                    weeklyAttendances.add(new AbstractMap.SimpleEntry<Integer, List<String>>(week, weeklyAttendance));
                 }
             }
         }
@@ -386,5 +400,197 @@ public class MotorPH {
         input = input.replaceAll("\"", "");
         
         return input;
+    }
+
+    // Method used for getting SSS Contribution
+    public static double getSSSContribution() {
+        if (basicSalary < 3250) {
+            return 135.00;
+        }
+        else if (basicSalary >= 3250 && basicSalary <= 3750) {
+            return 157.50;
+        }
+        else if (basicSalary >= 3750 && basicSalary <= 4250) {
+            return 180.00;
+        }
+        else if (basicSalary >= 4250 && basicSalary <= 4750) {
+            return 202.50;
+        }
+        else if (basicSalary >= 4750 && basicSalary <= 5250) {
+            return 225.00;
+        }
+        else if (basicSalary >= 5250 && basicSalary <= 5750) {
+            return 247.50;
+        }
+        else if (basicSalary >= 5750 && basicSalary <= 6250) {
+            return 270.00;
+        }
+        else if (basicSalary >= 6250 && basicSalary <= 6750) {
+            return 292.50;
+        }
+        else if (basicSalary >= 6750 && basicSalary <= 7250) {
+            return 315.00;
+        }
+        else if (basicSalary >= 7250 && basicSalary <= 7750) {
+            return 337.50;
+        }
+        else if (basicSalary >= 7750 && basicSalary <= 8250) {
+            return 360.00;
+        }
+        else if (basicSalary >= 8250 && basicSalary <= 8750) {
+            return 382.50;
+        }
+        else if (basicSalary >= 8750 && basicSalary <= 9250) {
+            return 405.00;
+        }
+        else if (basicSalary >= 9250 && basicSalary <= 9750) {
+            return 427.50;
+        }
+        else if (basicSalary >= 9750 && basicSalary <= 10250) {
+            return 450.00;
+        }
+        else if (basicSalary >= 10250 && basicSalary <= 10750) {
+            return 472.50;
+        }
+        else if (basicSalary >= 10750 && basicSalary <= 11250) {
+            return 495.00;
+        }
+        else if (basicSalary >= 11250 && basicSalary <= 11750) {
+            return 517.50;
+        }
+        else if (basicSalary >= 11750 && basicSalary <= 12250) {
+            return 540.00;
+        }
+        else if (basicSalary >= 12250 && basicSalary <= 12750) {
+            return 562.50;
+        }
+        else if (basicSalary >= 12750 && basicSalary <= 13250) {
+            return 585.00;
+        }
+        else if (basicSalary >= 13250 && basicSalary <= 13750) {
+            return 607.50;
+        }
+        else if (basicSalary >= 13750 && basicSalary <= 14250) {
+            return 630.00;
+        }
+        else if (basicSalary >= 14250 && basicSalary <= 14750) {
+            return 652.50;
+        }
+        else if (basicSalary >= 14750 && basicSalary <= 15250) {
+            return 675.00;
+        }
+        else if (basicSalary >= 15250 && basicSalary <= 15750) {
+            return 697.50;
+        }
+        else if (basicSalary >= 15750 && basicSalary <= 16250) {
+            return 720.00;
+        }
+        else if (basicSalary >= 16250 && basicSalary <= 16750) {
+            return 742.50;
+        }
+        else if (basicSalary >= 16750 && basicSalary <= 17250) {
+            return 765.00;
+        }
+        else if (basicSalary >= 17250 && basicSalary <= 17750) {
+            return 787.50;
+        }
+        else if (basicSalary >= 17750 && basicSalary <= 18250) {
+            return 810.00;
+        }
+        else if (basicSalary >= 18250 && basicSalary <= 18750) {
+            return 832.50;
+        }
+        else if (basicSalary >= 18750 && basicSalary <= 19250) {
+            return 855.00;
+        }
+        else if (basicSalary >= 19250 && basicSalary <= 19750) {
+            return 877.50;
+        }
+        else if (basicSalary >= 19750 && basicSalary <= 20250) {
+            return 900.00;
+        }
+        else if (basicSalary >= 20250 && basicSalary <= 20750) {
+            return 922.50;
+        }
+        else if (basicSalary >= 20750 && basicSalary <= 21250) {
+            return 945.00;
+        }
+        else if (basicSalary >= 21250 && basicSalary <= 21750) {
+            return 967.50;
+        }
+        else if (basicSalary >= 21750 && basicSalary <= 22250) {
+            return 990.00;
+        }
+        else if (basicSalary >= 22250 && basicSalary <= 22750) {
+            return 1012.50;
+        }
+        else if (basicSalary >= 22750 && basicSalary <= 23250) {
+            return 1035.00;
+        }
+        else if (basicSalary >= 23250 && basicSalary <= 23750) {
+            return 1057.50;
+        }
+        else if (basicSalary >= 23750 && basicSalary <= 24250) {
+            return 1080.00;
+        }
+        else if (basicSalary >= 24250 && basicSalary <= 24750) {
+            return 1102.50;
+        }
+        else {
+            return 1125.00;
+        }
+    }
+
+    // Method used for getting PhilHealth Contribution
+    public static double getPhilHealthContribution() {
+        if (basicSalary <= 10000.00) {
+            return 150.00;
+        }
+        else if (basicSalary > 10000 && basicSalary < 60000) {
+            return (basicSalary * 0.03) / 2;
+        }
+        else {
+            return 900;
+        }
+    }
+
+    // Method used for getting Pagibig Contribution
+    public static double getPagibigContribution() {
+        if (basicSalary >= 1000 && basicSalary <= 1500) {
+            return basicSalary * 0.01;
+        }
+        else if (basicSalary > 1500){
+            if ((basicSalary * 0.02) <= 100) {
+                return basicSalary * 0.02;
+            }
+            else {
+                return 100;
+            }
+        }
+        else {
+            return 0.0;
+        }
+    }
+
+    // Method used for getting Witholding Tax
+    public static double getWitholdingTax() {
+        if (basicSalary <= 20832){
+            return 0.0;
+        }
+        else if (basicSalary >= 20833 && basicSalary < 33333) {
+            return (basicSalary - 20833) * 0.2;
+        }
+        else if (basicSalary >= 33333 && basicSalary < 66667) {
+            return ((basicSalary - 33333) * 0.25) + 2500;
+        }
+        else if (basicSalary >= 66667 && basicSalary < 166667) {
+            return ((basicSalary - 66667) * 0.3) + 10833;
+        }
+        else if (basicSalary >= 166667 && basicSalary < 666667) {
+            return ((basicSalary - 166667) * 0.32) + 40833.33;
+        }
+        else {
+            return ((basicSalary - 666667) * 0.35) + 200833.33;
+        }
     }
 }
